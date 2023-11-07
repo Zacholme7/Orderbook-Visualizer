@@ -1,75 +1,41 @@
-use std::collections::BTreeMap;
-use ordered_float::OrderedFloat;
-use crate::{websocket, models};
+use crate::{models, websocket};
 use clearscreen::clear;
+use ordered_float::OrderedFloat;
+use std::{collections::BTreeMap, error::Error};
 
-// Structure Representing the orderboo
 pub struct Orderbook {
     pub asks: BTreeMap<OrderedFloat<f64>, f64>,
     pub bids: BTreeMap<OrderedFloat<f64>, f64>,
 }
 
-
 impl Orderbook {
-    // constructor for the orderbook
-    pub fn new() -> Orderbook {
-        Orderbook {
+    pub fn new() -> Self {
+        Self {
             asks: BTreeMap::new(),
             bids: BTreeMap::new(),
         }
     }
 
-    // recieve a mesasge from the websocket and update the book
-    pub fn update_book(&mut self, snapshot: models::DepthSnapshot, symbol: &str) {
-        // get the last update id, for managing local order boo
+    pub fn update_book(&mut self, snapshot: models::DepthSnapshot, symbol: &str) -> Result<(), Box<dyn Error>> {
         let last_update_id = snapshot.lastUpdateId;
+        self.asks = snapshot.asks.into_iter().map(|entry| (OrderedFloat(entry.price), entry.qty)).collect();
+        self.bids = snapshot.bids.into_iter().map(|entry| (OrderedFloat(entry.price), entry.qty)).collect();
 
-        // insert the current asks and bids from the snapshot
-        for ask in snapshot.asks {
-            self.asks.insert(OrderedFloat(ask.price), ask.qty);
-        }
-        for bid in snapshot.bids {
-            self.bids.insert(OrderedFloat(bid.price), bid.qty);
-        }
-
-        let mut socket = match websocket::connect_to_websocket(symbol) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Failed to connect to the WebSocket: {}", e);
-                return;
-            }
-        };
-    
-        loop {
-            // read a message and parse it
-            // if it is a successful message, pass it to be processed
-            // otherwise, throw an error
-            match socket.read_message() {
-                Ok(msg) => match msg {
-                    tungstenite::Message::Text(text) => {
-                        match serde_json::from_str::<models::DepthUpdateEvent>(&text) {
-                            Ok(update) => {
-                                // If successful, process the update
-                                //println!("{:?}", update);
-                                self.process_message(update, last_update_id)
-                            },
-                            Err(e) => {
-                                eprintln!("Failed to parse depth update: {}", e);
-                            }
-                        }
+        let mut socket = websocket::connect_to_websocket(symbol)?;
+        while let Ok(msg) = socket.read_message() {
+            match msg {
+                tungstenite::Message::Text(text) => {
+                    if let Ok(update) = serde_json::from_str::<models::DepthUpdateEvent>(&text) {
+                        self.process_message(update, last_update_id)?;
                     }
-                    _ => eprintln!("Received a non-text message"),
-                },
-                Err(e) => {
-                    eprintln!("Error reading message: {}", e);
-                    break;
                 }
+                _ => eprintln!("Received a non-text message"),
             }
         }
+        Ok(())
     }
 
-    pub fn process_message(&mut self, update: models::DepthUpdateEvent, last_update_id: i64) {
-        // First, check if the update ID is relevant.
+    pub fn process_message(&mut self, update: models::DepthUpdateEvent, last_update_id: i64) -> Result<(), Box<dyn Error>> {
         if update.u > last_update_id {
             // Update bids
             for bid in update.b {
@@ -95,25 +61,16 @@ impl Orderbook {
                 }
             }
         }
-        self.print_orderbook();
+        self.print_orderbook()?;
+        Ok(())
     }
 
-    pub fn print_orderbook(&self) {
-        if let Err(e) = clear() {
-            eprintln!("Failed to clear screen: {}", e);
-            return;
-        }
-        let top_asks: Vec<_> = self.asks.iter().take(10).collect();
+    pub fn print_orderbook(&self) -> Result<(), Box<dyn Error>> {
+        clear()?;
         println!("\nTop 10 Asks:");
-        for (price, qty) in top_asks.iter().rev() {
-            println!("Price: {}, Quantity: {}", price.into_inner(), qty);
-        }
-
-        // Print top 10 bids (highest price first)
+        self.asks.iter().take(10).rev().for_each(|(price, qty)| println!("Price: {}, Quantity: {}", price.into_inner(), qty));
         println!("\nTop 10 Bids:");
-        for (price, qty) in self.bids.iter().rev().take(10) {
-            println!("Price: {}, Quantity: {}", price.into_inner(), qty);
-        }
+        self.bids.iter().rev().take(10).for_each(|(price, qty)| println!("Price: {}, Quantity: {}", price.into_inner(), qty));
+        Ok(())
     }
-
 }
