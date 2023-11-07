@@ -1,6 +1,7 @@
 use tungstenite::connect;
 use url::Url;
 
+// this is a random test blah blah
 fn main() {
     get_depth_snapshot();
     connect_to_websocket();
