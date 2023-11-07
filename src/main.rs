@@ -10,10 +10,12 @@ mod api;
 mod orderbook;
 mod models;
 
+/// The main function to run the application. It will get the depth snapshot, create the orderbook,
+/// then keep updating the orderbook
 fn main() -> Result<(), Box<dyn Error>>{
     let symbol = "BNBBTC";
 
-    // get the curren orderbook snapshot
+    //get the curren orderbook snapshot
     let snapshot = get_depth_snapshot(&symbol)?; // get the depth snapshot
 
     // create the orderbook and start the update loop

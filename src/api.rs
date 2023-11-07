@@ -2,6 +2,8 @@ use crate::models::DepthSnapshot;
 use reqwest::blocking::Client;
 use std::error::Error;
 
+/// This function will get an initial snapshot of the orderbook. This is to provide us
+/// with the starting orders to update from the websocket
 pub fn get_depth_snapshot(symbol: &str) -> Result<DepthSnapshot, Box<dyn Error>> {
     let snapshot_url = "https://api.binance.com/api/v3/depth";
     let params = [("symbol", symbol)];

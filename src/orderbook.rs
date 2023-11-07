@@ -3,12 +3,16 @@ use clearscreen::clear;
 use ordered_float::OrderedFloat;
 use std::{collections::BTreeMap, error::Error};
 
+/// Structure representing a market orderboo
 pub struct Orderbook {
+    /// This is all of the ask orders
     pub asks: BTreeMap<OrderedFloat<f64>, f64>,
+    /// This is all of the bid orders
     pub bids: BTreeMap<OrderedFloat<f64>, f64>,
 }
 
 impl Orderbook {
+    /// Constructor for a new orderbook, just default initialization
     pub fn new() -> Self {
         Self {
             asks: BTreeMap::new(),
@@ -16,6 +20,9 @@ impl Orderbook {
         }
     }
 
+    /// Main function to update the orderbook
+    /// This will get a connection to the websocket, update the book with the initla snapshot
+    /// then continuously update the book while printing it out
     pub fn update_book(&mut self, snapshot: models::DepthSnapshot, symbol: &str) -> Result<(), Box<dyn Error>> {
         let last_update_id = snapshot.lastUpdateId;
         self.asks = snapshot.asks.into_iter().map(|entry| (OrderedFloat(entry.price), entry.qty)).collect();
@@ -35,7 +42,9 @@ impl Orderbook {
         Ok(())
     }
 
-    pub fn process_message(&mut self, update: models::DepthUpdateEvent, last_update_id: i64) -> Result<(), Box<dyn Error>> {
+    /// This function will process each message recieved from the websocket
+    /// It will update the orderbook with the new bids and asks and remove the orders that have been filled 
+    fn process_message(&mut self, update: models::DepthUpdateEvent, last_update_id: i64) -> Result<(), Box<dyn Error>> {
         if update.u > last_update_id {
             // Update bids
             for bid in update.b {
@@ -65,7 +74,8 @@ impl Orderbook {
         Ok(())
     }
 
-    pub fn print_orderbook(&self) -> Result<(), Box<dyn Error>> {
+    /// Print out the orderbook for visualization
+    fn print_orderbook(&self) -> Result<(), Box<dyn Error>> {
         clear()?;
         println!("\nTop 10 Asks:");
         self.asks.iter().take(10).rev().for_each(|(price, qty)| println!("Price: {}, Quantity: {}", price.into_inner(), qty));

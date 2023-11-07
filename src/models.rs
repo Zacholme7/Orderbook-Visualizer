@@ -1,4 +1,6 @@
 use serde::{Serialize, Deserialize, de::{self, Deserializer}};
+/// Represents all of the structures that we use for serialization and deserialization from the
+/// websocket and the api
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DepthUpdateEvent {
