@@ -7,14 +7,8 @@ pub struct DepthUpdateEvent {
     pub s: String, // Symbol
     pub U: i64,    // First update ID in event
     pub u: i64,    // Final update ID in event
-    pub b: Vec<Order>, // Bids to be updated
-    pub a: Vec<Order>, // Asks to be updated
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Order {
-    pub price: String,
-    pub qty: String,
+    pub b: Vec<OrderBookEntry>, // Bids to be updated
+    pub a: Vec<OrderBookEntry>, // Asks to be updated
 }
 
 #[derive(Serialize, Deserialize, Debug)]
