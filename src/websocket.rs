@@ -1,5 +1,4 @@
-use tungstenite::{connect, WebSocket, Message, Error};
-use tungstenite::protocol::WebSocketConfig;
+use tungstenite::{connect, WebSocket};
 use url::Url;
 
 /// This function will connect to the depth websocket endpoing for the specified symbol
