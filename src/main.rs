@@ -1,6 +1,8 @@
 use websocket::connect_to_websocket;
 use api::get_depth_snapshot;
 use std::collections::BTreeMap;
+use ordered_float::OrderedFloat;
+use orderbook::Orderbook;
 
 mod websocket;
 mod api;
@@ -16,19 +18,12 @@ fn main() {
     // get the curren orderbook snapshot
     let snapshot = get_depth_snapshot(&symbol).unwrap(); // get the depth snapshot
 
-    // get the last updated id
-    let last_update_id = snapshot.lastUpdateId;
+    // create the orderbook and start the update loop
+    // run this in a new thread??
+    let mut test = orderbook::Orderbook::new(); // create a new orderbook
+    test.update_book(snapshot, symbol);
 
-    // init our local orderbook or asks and bids
-    let mut asks: BTreeMap<f64, f64> = BTreeMap::new();
-    let mut bids: BTreeMap<f64, f64> = BTreeMap::new();
-
-    for ask in snapshot.asks {
-        asks.insert(ask.price, ask.qty);
-    }
-
-    for bid in snapshot.bids {
-        bids.insert(bid.price, bid.qty);
-    }
 }
+
+
 
