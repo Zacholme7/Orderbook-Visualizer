@@ -1,6 +1,7 @@
 use crate::{models, websocket};
 use clearscreen::clear;
 use ordered_float::OrderedFloat;
+use tungstenite::WebSocket;
 use std::{collections::BTreeMap, error::Error};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -41,10 +42,12 @@ impl Orderbook {
         Ok(last_update_id)
     }
 
-    
-    pub fn update_stream(orderbook: Arc<Mutex<Orderbook>>, symbol: &str, last_update_id: i64, should_continue: Arc<AtomicBool>) -> Result<(), Box<dyn Error>> {
-        let mut socket = websocket::connect_to_websocket(symbol)?;
-
+    pub fn update_stream(
+        orderbook: Arc<Mutex<Orderbook>>, 
+        last_update_id: i64, 
+        should_continue: Arc<AtomicBool>,
+        mut socket: WebSocket<impl std::io::Read + std::io::Write>,
+        ) -> Result<(), Box<dyn Error>> {
         while should_continue.load(Ordering::Relaxed) {
             // The let binding is incorrect here; you should match on the result of the expression directly.
             match socket.read_message() {

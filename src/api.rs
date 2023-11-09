@@ -9,11 +9,13 @@ pub fn get_depth_snapshot(symbol: &str) -> Result<DepthSnapshot, Box<dyn Error>>
     let params = [("symbol", symbol)];
 
     let client = Client::new();
+    println!("Getting the current depth snapshot...");
     let res = client.get(snapshot_url)
         .query(&params)
         .send()?;
 
     if res.status().is_success() {
+        println!("Got the depth snapshot!!!");
         let depth_snapshot = res.json()?;
         Ok(depth_snapshot)
     } else {

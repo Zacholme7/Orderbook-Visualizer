@@ -23,20 +23,36 @@ mod tui;
 fn main() -> Result<(), Box<dyn std::error::Error>>{
     let symbol = "BNBBTC";
 
-
-
-    // make the client, this will block untill we are able to connect, if we cannot connect, handle this and exit the program
+    // get the client that will hold orderbook and exchange information
     let mut client = Client::new("Binance".to_string(), "BNBBTC".to_string());
-    // if we have connected, take the snapshot and update the orderboo
+
+    // take a snapshot of the orderbook for initial population
+    /* 
     let snapshot = get_depth_snapshot(symbol)?; // get the depth snapshot
+
+    // update the orderbook wtih the snapshot and get the last update id for continual update
     let last_update_id = client.orderbook.lock().unwrap().update_book(snapshot)?;
+
+    // atomic bool that will signal when we break out of the stream
     let should_continue = Arc::new(AtomicBool::new(true));
 
-    let updater_thread = thread::spawn(move || {
-        Orderbook::update_stream(client.orderbook.clone(), &symbol, last_update_id, should_continue.clone()).expect("failed in the update stream");
-    });
+    // vars to be passed into the updater thread
+    let orderbook_clone = client.orderbook.clone();
+    let should_continue_clone = should_continue.clone();
+    let websocket = client.get_websocket().unwrap();
 
-    // create the model
+    // start the update thread that will continually update the orderboo
+    let updater_thread = thread::spawn(move || {
+        Orderbook::update_stream(
+            orderbook_clone,
+            last_update_id, 
+            should_continue_clone,
+            websocket,
+        ).expect("failed in the update stream");
+    });
+    */
+
+    // create the model for the tui
     let mut model = tui::Model {
         should_quit: false,
     };
@@ -44,22 +60,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     // start up the tui and get the terminal
     let mut terminal = model.startup()?;
 
-
     while !model.should_quit {
         {
             let orderbook = client.orderbook.lock().unwrap();
-            /* 
-            terminal.draw(|frame| {
-
+            terminal.draw(|f| {
+                model.view(&orderbook, f);
             })?;
-            */
 
-
-            let mut current_msg = model.handle_event()?;
+            let current_msg = model.handle_event()?;
 
             if current_msg != None && current_msg.unwrap() == tui::Message::Quit {
                 model.should_quit = true;
-                should_continue.store(false, Ordering::Relaxed);
+                //should_continue.store(false, Ordering::Relaxed);
             }
 
         }
@@ -68,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
     }
     model.shutdown()?;
 
-    updater_thread.join().expect("unable to join thread");
+    //updater_thread.join().expect("unable to join thread");
 
     Ok(())
 }
