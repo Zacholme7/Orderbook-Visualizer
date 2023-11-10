@@ -33,71 +33,63 @@ impl Model {
         Ok(())
     }
 
-    pub fn view(&self, orderbook: &MutexGuard<Orderbook>, frame: &mut Frame ) {
-        // should just map model to visual representation
+    pub fn view(&self, orderbook: &MutexGuard<Orderbook>, frame: &mut Frame) {
 
-        // make the rect centered
-        let percent_y = 99;
-        let percent_x = 99;
-        let popup_layout = Layout::default()
-          .direction(Direction::Vertical)
-          .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-          ])
-          .split(frame.size());
-      
-        let centered_rect = Layout::default()
-          .direction(Direction::Horizontal)
-          .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-          ])
-          .split(popup_layout[1])[1];
+        let layout = Layout::new()
+            . direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(50),
+                Constraint::Percentage(50),
+            ]).split(frame.size());
 
-        // split into the two boxes for bids and asks
-        let bid_ask_layout = Layout::default()
-          .direction(Direction::Horizontal)
-          .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-          ])
-          .split(centered_rect);
+        // Render the outer block for bids
+        let bids_block = Block::default().title("Bids").borders(Borders::ALL);
+        let bids_area = layout[0];
+        let bid_area = bids_block.inner(bids_area); // Get the inner area of the bids block
+        frame.render_widget(bids_block, bids_area);
 
-         let constraints = (0..10) // Create an iterator for 10 items
-            .map(|i| Constraint::Percentage(10 * (10 - i))) // Map each item to a decreasing percentage
-            .collect::<Vec<_>>(); // Collect into a Vec<Constraint>
+        // Calculate the constraints for 10 equally spaced blocks
+        let bid_constraints = std::iter::repeat(Constraint::Percentage(1))
+            .take(100)
+            .collect::<Vec<_>>();
 
-        let bids = Layout::default()
+        // Create a layout for the 10 inner bid blocks
+        let bids_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(constraints) // Use the generated constraints
-            .split(bid_ask_layout[0]);
+            .constraints(bid_constraints)
+            .split(bid_area);
 
-            /* 
-        frame.render_widget(
-            Block::default().borders(Borders::all()).title("Orderbook").title_alignment(Alignment::Center), centered_rect
-        );
-
-        frame.render_widget(
-            Block::default().borders(Borders::all()).title("Bids").title_alignment(Alignment::Center), bid_ask_layout[0]
-        );
-        */
-        frame.render_widget(
-            Block::default().borders(Borders::all()).title("Asks").title_alignment(Alignment::Center), bid_ask_layout[1]
-        );
-
-        for i in 0..10 {
-            frame.render_widget(
-                Block::default().borders(Borders::all()), bids[i]
-            );
+        // Render each inner bid block
+        for i in 0..100 {
+            let bids_inner = Block::default().title(format!("Bid {}", i + 1)).borders(Borders::ALL);
+            frame.render_widget(bids_inner, bids_layout[i]);
         }
 
 
+        let asks_block = Block::default().title("Asks").borders(Borders::ALL);
+        let asks_area = layout[1];
+        let ask_area = asks_block.inner(asks_area); // Get the inner area of the bids block
+        frame.render_widget(asks_block, asks_area);
 
+        // Calculate the constraints for 10 equally spaced blocks
+        let ask_constraints = std::iter::repeat(Constraint::Percentage(1))
+            .take(100)
+            .collect::<Vec<_>>();
+
+        // Create a layout for the 10 inner bid blocks
+        let asks_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(ask_constraints)
+            .split(ask_area);
+
+        // Render each inner bid block
+        for i in 0..100 {
+            let asks_inner = Block::default().title(format!("Asks {}", i + 1));
+            frame.render_widget(asks_inner, asks_layout[i]);
+        }
     }
-
+    
+    // Helper function to render a side of the order book
 
 
     pub fn handle_event(&self) -> Result<Option<Message>, Box<dyn std::error::Error>> {
