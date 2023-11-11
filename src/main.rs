@@ -18,39 +18,35 @@ mod orderbook;
 mod models;
 mod tui;
 
-/// The main function to run the application. It will get the depth snapshot, create the orderbook,
-/// then keep updating the orderbook
-fn main() -> Result<(), Box<dyn std::error::Error>>{
-    let symbol = "BNBBTC";
 
-    // get the client that will hold orderbook and exchange information
-    let mut client = Client::new("Binance".to_string(), "BNBBTC".to_string());
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let symbol = "ADAUSDT";
 
-    // take a snapshot of the orderbook for initial population
-    /* 
-    let snapshot = get_depth_snapshot(symbol)?; // get the depth snapshot
+    // Create a new orderbook instance
+    let orderbook = Arc::new(Mutex::new(orderbook::Orderbook::new()));
 
-    // update the orderbook wtih the snapshot and get the last update id for continual update
-    let last_update_id = client.orderbook.lock().unwrap().update_book(snapshot)?;
+    // Connect to WebSocket and start listening to events
+    let socket = websocket::connect_to_websocket(symbol)?;
+    
+      // Fetch the depth snapshot and populate book wtih it initially
+    let snapshot = get_depth_snapshot(symbol)?;
 
-    // atomic bool that will signal when we break out of the stream
+    // boolean to disconnect the thread
     let should_continue = Arc::new(AtomicBool::new(true));
 
-    // vars to be passed into the updater thread
-    let orderbook_clone = client.orderbook.clone();
-    let should_continue_clone = should_continue.clone();
-    let websocket = client.get_websocket().unwrap();
 
-    // start the update thread that will continually update the orderboo
+    // clones to be passed into the updater thread
+    let orderbook_clone = orderbook.clone();
+    let should_continue_clone = should_continue.clone();
+
     let updater_thread = thread::spawn(move || {
-        Orderbook::update_stream(
+        Orderbook::update_book(
             orderbook_clone,
-            last_update_id, 
+            socket, 
+            snapshot,
             should_continue_clone,
-            websocket,
         ).expect("failed in the update stream");
     });
-    */
 
     // create the model for the tui
     let mut model = tui::Model {
@@ -62,25 +58,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>>{
 
     while !model.should_quit {
         {
-            let orderbook = client.orderbook.lock().unwrap();
+            let orderbook = orderbook.lock().unwrap();
             terminal.draw(|f| {
                 model.view(&orderbook, f);
             })?;
-
             let current_msg = model.handle_event()?;
 
             if current_msg != None && current_msg.unwrap() == tui::Message::Quit {
                 model.should_quit = true;
-                //should_continue.store(false, Ordering::Relaxed);
+                should_continue.store(false, Ordering::Relaxed);
             }
-
         }
-
         thread::sleep(Duration::from_millis(100));
     }
     model.shutdown()?;
-
-    //updater_thread.join().expect("unable to join thread");
+    updater_thread.join();
 
     Ok(())
 }

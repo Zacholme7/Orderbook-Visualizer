@@ -20,7 +20,7 @@ pub struct DepthSnapshot {
     pub asks: Vec<OrderBookEntry>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OrderBookEntry {
     #[serde(deserialize_with = "deserialize_order")]
     pub price: f64, // PRICE

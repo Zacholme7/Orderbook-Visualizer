@@ -34,7 +34,6 @@ impl Model {
     }
 
     pub fn view(&self, orderbook: &MutexGuard<Orderbook>, frame: &mut Frame) {
-
         let layout = Layout::new()
             . direction(Direction::Horizontal)
             .constraints([
@@ -42,51 +41,41 @@ impl Model {
                 Constraint::Percentage(50),
             ]).split(frame.size());
 
-        // Render the outer block for bids
-        let bids_block = Block::default().title("Bids").borders(Borders::ALL);
-        let bids_area = layout[0];
-        let bid_area = bids_block.inner(bids_area); // Get the inner area of the bids block
-        frame.render_widget(bids_block, bids_area);
+        let bid_quantities: Vec<u64> = orderbook.bids.values()
+            .rev()
+            .cloned()
+            .take(25)
+            .map(|qty| qty.floor() as u64) // Round down and cast to u64
+            .collect();
 
-        // Calculate the constraints for 10 equally spaced blocks
-        let bid_constraints = std::iter::repeat(Constraint::Percentage(1))
-            .take(100)
-            .collect::<Vec<_>>();
+        let ask_quantities: Vec<u64> = orderbook.asks.values()
+                .cloned()
+                .take(25)
+                .rev()
+                .map(|qty| qty.floor() as u64 )
+                .collect();
 
-        // Create a layout for the 10 inner bid blocks
-        let bids_layout = Layout::default()
+        // Now use bid_quantities for the barchart
+        let barchart = BarChart::default()
+            .block(Block::default().title("Data1").borders(Borders::ALL))
+            .data(BarGroup::default().bars(
+                &bid_quantities.iter().map(|&qty| Bar::default().value(qty)).collect::<Vec<_>>()
+            ))
             .direction(Direction::Vertical)
-            .constraints(bid_constraints)
-            .split(bid_area);
+            .fg(Color::Green);
 
-        // Render each inner bid block
-        for i in 0..100 {
-            let bids_inner = Block::default().title(format!("Bid {}", i + 1)).borders(Borders::ALL);
-            frame.render_widget(bids_inner, bids_layout[i]);
-        }
-
-
-        let asks_block = Block::default().title("Asks").borders(Borders::ALL);
-        let asks_area = layout[1];
-        let ask_area = asks_block.inner(asks_area); // Get the inner area of the bids block
-        frame.render_widget(asks_block, asks_area);
-
-        // Calculate the constraints for 10 equally spaced blocks
-        let ask_constraints = std::iter::repeat(Constraint::Percentage(1))
-            .take(100)
-            .collect::<Vec<_>>();
-
-        // Create a layout for the 10 inner bid blocks
-        let asks_layout = Layout::default()
+        let ask_chart = BarChart::default()
+            .block(Block::default().title("Data1").borders(Borders::ALL))
+            .data(BarGroup::default().bars(
+                &ask_quantities.iter().map(|&qty| Bar::default().value(qty)).collect::<Vec<_>>()
+            ))
             .direction(Direction::Vertical)
-            .constraints(ask_constraints)
-            .split(ask_area);
+            .fg(Color::Red);
 
-        // Render each inner bid block
-        for i in 0..100 {
-            let asks_inner = Block::default().title(format!("Asks {}", i + 1));
-            frame.render_widget(asks_inner, asks_layout[i]);
-        }
+
+             
+        frame.render_widget(barchart, layout[0]);
+        frame.render_widget(ask_chart, layout[1]);
     }
     
     // Helper function to render a side of the order book
