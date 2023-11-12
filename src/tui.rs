@@ -58,7 +58,7 @@ impl Model {
         let bid_chart = BarChart::default()
             .block(Block::default().title("Bids").title_alignment(Alignment::Center).borders(Borders::ALL))
             .data(BarGroup::default().bars(
-                &bid_quantities.iter().map(|&qty| Bar::default().value(qty).label("ehllo".into())).collect::<Vec<_>>()
+                &bid_quantities.iter().map(|&qty| Bar::default().value(qty)).collect::<Vec<_>>()
             ))
             .direction(Direction::Vertical)
             .fg(Color::Green);
