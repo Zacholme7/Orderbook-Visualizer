@@ -1,23 +1,15 @@
 use api::get_depth_snapshot;
 use orderbook::Orderbook;
-use ratatui::prelude::{Direction, Layout};
-use ratatui::style::Color;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
-use ratatui::prelude::Constraint;
-use ratatui::widgets::Gauge;
-use client::Client;
-use ratatui::prelude::Style;
 
-mod client;
 mod websocket;
 mod api;
 mod orderbook;
 mod models;
 mod tui;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let symbol = "ADAUSDT";
@@ -34,11 +26,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // boolean to disconnect the thread
     let should_continue = Arc::new(AtomicBool::new(true));
 
-
     // clones to be passed into the updater thread
     let orderbook_clone = orderbook.clone();
     let should_continue_clone = should_continue.clone();
 
+    // spawn the new thread that will handle book updates
     let updater_thread = thread::spawn(move || {
         Orderbook::update_book(
             orderbook_clone,
@@ -56,14 +48,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // start up the tui and get the terminal
     let mut terminal = model.startup()?;
 
+    // while we dont want to quit yet
     while !model.should_quit {
         {
+
+            // get the orderbook and draw its values
             let orderbook = orderbook.lock().unwrap();
             terminal.draw(|f| {
                 model.view(&orderbook, f);
             })?;
-            let current_msg = model.handle_event()?;
 
+            // handle message, just checking if we should qui
+            let current_msg = model.handle_event()?;
             if current_msg != None && current_msg.unwrap() == tui::Message::Quit {
                 model.should_quit = true;
                 should_continue.store(false, Ordering::Relaxed);
@@ -71,8 +67,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         thread::sleep(Duration::from_millis(100));
     }
+
+    // shutdown the tui
     model.shutdown()?;
-    updater_thread.join();
+
+    // joint he thread
+    updater_thread.join().unwrap();
 
     Ok(())
 }

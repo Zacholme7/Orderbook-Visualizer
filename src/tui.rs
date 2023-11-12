@@ -13,7 +13,6 @@ pub struct Model {
 // message states for communication
 #[derive(PartialEq)]
 pub enum Message {
-    UpdateOrderbook,
     Quit,
 }
 
@@ -44,43 +43,39 @@ impl Model {
         let bid_quantities: Vec<u64> = orderbook.bids.values()
             .rev()
             .cloned()
-            .take(25)
+            .take(100)
             .map(|qty| qty.floor() as u64) // Round down and cast to u64
             .collect();
 
         let ask_quantities: Vec<u64> = orderbook.asks.values()
                 .cloned()
-                .take(25)
+                .take(100)
                 .rev()
                 .map(|qty| qty.floor() as u64 )
                 .collect();
 
         // Now use bid_quantities for the barchart
-        let barchart = BarChart::default()
-            .block(Block::default().title("Data1").borders(Borders::ALL))
+        let bid_chart = BarChart::default()
+            .block(Block::default().title("Bids").title_alignment(Alignment::Center).borders(Borders::ALL))
             .data(BarGroup::default().bars(
-                &bid_quantities.iter().map(|&qty| Bar::default().value(qty)).collect::<Vec<_>>()
+                &bid_quantities.iter().map(|&qty| Bar::default().value(qty).label("ehllo".into())).collect::<Vec<_>>()
             ))
             .direction(Direction::Vertical)
             .fg(Color::Green);
 
         let ask_chart = BarChart::default()
-            .block(Block::default().title("Data1").borders(Borders::ALL))
+            .block(Block::default().title("Asks").title_alignment(Alignment::Center).borders(Borders::ALL))
             .data(BarGroup::default().bars(
                 &ask_quantities.iter().map(|&qty| Bar::default().value(qty)).collect::<Vec<_>>()
             ))
             .direction(Direction::Vertical)
             .fg(Color::Red);
 
-
-             
-        frame.render_widget(barchart, layout[0]);
+        frame.render_widget(bid_chart, layout[0]);
         frame.render_widget(ask_chart, layout[1]);
     }
     
     // Helper function to render a side of the order book
-
-
     pub fn handle_event(&self) -> Result<Option<Message>, Box<dyn std::error::Error>> {
         let message = if crossterm::event::poll(std::time::Duration::from_millis(250))? {
             if let crossterm::event::Event::Key(key) = crossterm::event::read()? {

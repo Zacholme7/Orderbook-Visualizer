@@ -1,11 +1,11 @@
 use crate::models;
-use clearscreen::clear;
 use ordered_float::OrderedFloat;
 use tungstenite::WebSocket;
 use std::{collections::BTreeMap, error::Error};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+// struct to represent the orderbook
 pub struct Orderbook {
     pub asks: BTreeMap<OrderedFloat<f64>, f64>,
     pub bids: BTreeMap<OrderedFloat<f64>, f64>,
@@ -21,6 +21,7 @@ impl Orderbook {
         }
     }
 
+    // handles the bok update
     pub fn update_book(
         orderbook: Arc<Mutex<Orderbook>>, 
         mut socket: WebSocket<impl std::io::Read + std::io::Write>, 
@@ -50,7 +51,7 @@ impl Orderbook {
                             }
                         }
                     }
-                    _ => eprintln!("Received a non-text message"),
+                    _ => continue
                 },
                 Err(_) => break, // Handle error as appropriate
             }
@@ -63,6 +64,7 @@ impl Orderbook {
         Ok(())
     }
 
+    // got a mesasge from the webscocket, process it
     pub fn process_message(&mut self, update: models::DepthUpdateEvent) -> Result<(), Box<dyn Error>> {
         if update.U <= self.last_update_id + 1 && update.u >= self.last_update_id + 1 {
             self.last_update_id = update.u;
@@ -85,20 +87,7 @@ impl Orderbook {
                 }
             }
         }
-        //self.print_orderbook();
         Ok(())
     }
 
-    pub fn print_orderbook(&self) {
-        clear();
-        println!("\nTop 10 Asks:");
-        for (price, qty) in self.asks.iter().take(10).rev() {
-            println!("Price: {}, Quantity: {}", price.into_inner(), qty);
-        }
-
-        println!("\nTop 10 Bids:");
-        for (price, qty) in self.bids.iter().rev().take(10) {
-            println!("Price: {}, Quantity: {}", price.into_inner(), qty);
-        }
-    }
 }
